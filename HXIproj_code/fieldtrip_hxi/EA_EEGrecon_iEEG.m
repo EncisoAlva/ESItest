@@ -61,8 +61,6 @@ cfg = [];
 cfg.viewmode   = 'butterfly';
 cfg.continuous = 'no';
 cfg.channel    = elec.label;
-cfg.trl        = cfg.trl;
-
 cfg.plotlabels ='yes'; 
 ft_databrowser( cfg,dataFC_LP )
 pause;
@@ -91,33 +89,7 @@ sourceFC  = ft_sourceanalysis(cfg, tlckFC);
 
 %% 4. Plot
 %
-cfg =[];
-cfg.sourcemodel.pos    = leadfield.pos;
-cfg.sourcemodel.inside = leadfield.inside';
-sourcemodel = ft_prepare_sourcemodel(cfg);
-
 picFC = sourceFC;
-picFC.avg.pow = sourceFC.avg.pow(:,450);
-
-cfg = [];
-cfg.downsample = 2;
-cfg.parameter  = 'pow';
-sourceInter    = ft_sourceinterpolate(cfg, picFC, sourcemodel);
-
-cfg  = [];
-cfg.method       = 'cloud';
-cfg.funparameter = 'pow';
-ft_sourceplot(cfg,sourceInter);
-
-cfg  = [];
-cfg.method       = 'slice';
-cfg.funparameter = 'pow';
-ft_sourceplot(cfg,sourceInter);
-
-
-%%
-picFC = sourceFC;
-%picFC.avg.pow = sourceFC.avg.pow(:,450);
 picFC.avg.pow = sourceFC.avg.pow(:,450);
 
 cfg =[];
@@ -131,11 +103,6 @@ cfg.funparameter = 'pow';
 cfg.funcolorlim  = [min(picFC.avg.pow) max(picFC.avg.pow)];
 ft_sourceplot( cfg, picFC );
 
-cfg  = [];
-cfg.method       = 'vertex';
-cfg.funparameter = 'pow';
-cfg.funcolorlim  = [min(picFC.avg.pow) max(picFC.avg.pow)];
-ft_sourceplot( cfg, picFC );
 
 %% DEPRECATED CODE - KEPT FOR EXPERIMENTATION
 %cfg.grad       = elec;
