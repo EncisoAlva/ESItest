@@ -1,7 +1,7 @@
 % Source reconstruction from EEG data using FieldTrip toolbox
 % Original by Dr Xi
 % 
-% Be careful with directory structure. Code is additionally sent to git.
+% Code is additionally sent to GitHub.
 
 %% CHANGELOG
 % 2019-09-17
@@ -22,28 +22,33 @@
 dataDIR   = '../../HXIproj_data/';
 inDIR     = [ dataDIR, 'input/Peng' ];
 filePATH  = [ inDIR, '/waterpain1.vhdr' ];
+FTversion = '20200227'; % update if fieldtrip is changed
 
 % templates
 addpath('../templates')
 
 % FieldTrip directory+init
-addpath('../../fieldtrip-20200227') %updatable
+addpath([ '../../fieldtrip-',FTversion ])
 ft_defaults    % initialization
 
 % custom Fieldtrip functions by HXI
 addpath('../HXI_fieldtrip')
 
 % specific segments: [prestim,poststim]
-prestim  = 0;
-poststim = 3;
+prestim  = 10;
+poststim = 60+50;
 
 %% 1. DATA LOAD
 %
-% templates
+% DEPRECATED: old templates
 load sourcespace_template;
 load vol_template;
 load elec_template;
 load leadfield_template;
+
+% templates
+%addpath([ '../../fieldtrip-',FTversion,'/template/sourcemodel' ])
+%load standard_sourcemodel3d5mm.mat
 
 % FC/FIC data
 cfg = [];
@@ -57,8 +62,11 @@ cfg = ft_definetrial(cfg);
 cfg.channel = {'all'}; % read all MEG channels except MLP31 and MLO12
 
 % use trials without artifacts (given)
-cfg.trl([   2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],:) = []; %FC
+%cfg.trl([   2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],:) = []; %FC
 %cfg.trl([1, 2,    4, 5, 6,    8, 9, 10,     12, 13],:) = []; % right cold
+
+CHOSEN_TRIAL = 1;
+cfg.trl( setdiff(1:13,CHOSEN_TRIAL) ,:) = []; %FC
 
 % preprocess
 dataFC_LP = ft_preprocessing(cfg);
@@ -72,7 +80,7 @@ cfg.continuous = 'no';
 cfg.channel    = elec.label;
 
 cfg.plotlabels ='yes'; 
-ft_databrowser( cfg,dataFC_LP )
+%ft_databrowser( cfg,dataFC_LP )
 
 %% 3. AVERAGING + NOISE-COVARIANCE
 cfg = [];
@@ -98,7 +106,10 @@ sourceFC  = ft_sourceanalysis(cfg, tlckFC);
 
 %% 4. Plot
 %
-picFC = sourceFC;
+picFC  = sourceFC;
+MinPow = min(min(picFC.avg.pow));
+MaxPow = max(max(picFC.avg.pow));
+
 %picFC.avg.pow = sourceFC.avg.pow(:,450);
 picFC.avg.pow = sourceFC.avg.pow(:,450);
 
@@ -110,28 +121,6 @@ sourcemodel = ft_prepare_sourcemodel(cfg);
 cfg  = [];
 cfg.method       = 'surface';
 cfg.funparameter = 'pow';
-cfg.funcolorlim  = [min(picFC.avg.pow) max(picFC.avg.pow)];
+cfg.funcolorlim  = [MinPow MaxPow];
 ft_sourceplot( cfg, picFC );
 
-%% MOVIE
-cfg = [];
-ft_sourcemovie( cfg, sourceFC );
-
-% % DEPRECATED
-% cfg =[];
-% cfg.sourcemodel.pos    = leadfield.pos;
-% cfg.sourcemodel.inside = leadfield.inside';
-% sourcemodel = ft_prepare_sourcemodel(cfg);
-% 
-% picFC = sourceFC;
-% picFC.avg.pow = sourceFC.avg.pow(:,450);
-% 
-% cfg = [];
-% cfg.downsample = 2;
-% cfg.parameter  = 'pow';
-% sourceInter    = ft_sourceinterpolate(cfg, picFC, sourcemodel);
-% 
-% cfg  = [];
-% cfg.method       = 'cloud';
-% cfg.funparameter = 'pow';
-% ft_sourceplot(cfg,sourceInter);

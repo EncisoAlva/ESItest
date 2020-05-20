@@ -61,7 +61,6 @@ cfg = [];
 cfg.viewmode   = 'butterfly';
 cfg.continuous = 'no';
 cfg.channel    = elec.label;
-cfg.trl        = cfg.trl;
 
 cfg.plotlabels ='yes'; 
 ft_databrowser( cfg,dataFC_LP )
