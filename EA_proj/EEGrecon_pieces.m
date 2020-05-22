@@ -35,19 +35,20 @@ ft_defaults    % initialization
 addpath('../HXI_fieldtrip')
 
 % specific segments: [prestim,poststim]
-prestim  = 6;
-poststim = 20;
+prestim  = 4;
+poststim = 6;
 
 %% 1. DATA LOAD
 %
-% DEPRECATED: old templates
+% templates given by HX
 load sourcespace_template;
 load vol_template;
 load elec_template;
 load leadfield_template;
 
-% templates
-%addpath([ '../../fieldtrip-',FTversion,'/template/sourcemodel' ])
+% templates from FieldTrip
+addpath([ '../../FT_template/headmodel' ])
+load standard_mri
 %load standard_sourcemodel3d5mm.mat
 
 % FC/FIC data
@@ -61,11 +62,7 @@ cfg.trialdef.post      = poststim;
 cfg = ft_definetrial(cfg);
 cfg.channel = {'all'}; % read all MEG channels except MLP31 and MLO12
 
-% use trials without artifacts (given)
-%cfg.trl([   2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],:) = []; %FC
-%cfg.trl([1, 2,    4, 5, 6,    8, 9, 10,     12, 13],:) = []; % right cold
-
-%CHOSEN_TRIAL = 3;
+CHOSEN_TRIAL = 3;
 cfg.trl( setdiff(1:13,CHOSEN_TRIAL) ,:) = []; %FC
 
 % preprocess
@@ -78,17 +75,9 @@ cfg = [];
 cfg.viewmode   = 'butterfly';
 cfg.continuous = 'no';
 cfg.channel    = elec.label;
-cfg.plotlabels ='yes';
 
-%subplot(7,4,[1 2 3 4])
+cfg.plotlabels ='yes'; 
 ft_databrowser( cfg,dataFC_LP )
-
-set(gcf, 'PaperUnits', 'inches');
-x_width=8;
-y_width=3;
-set(gcf, 'PaperPosition', [0 0 x_width y_width]); %
-saveas(gcf,['line',num2str(CHOSEN_TRIAL,'%02d'),'.png'])
-close all
 
 %% 3. AVERAGING + NOISE-COVARIANCE
 cfg = [];
@@ -121,46 +110,85 @@ cfg.sourcemodel.pos    = sourceFC.pos;
 cfg.sourcemodel.inside = sourceFC.inside';
 sourcemodel = ft_prepare_sourcemodel(cfg);
 
+CARRIER = zeros(8196,9);
 
-CARRIER = zeros(8196,24);
-
-for Snap = 0:23
-TimeWin = max(1,Snap*1000):(Snap+3)*1000;
-CARRIER(:,Snap) = mean( sourceFC.avg.pow(:,TimeWin), 2 );
+for Snap = 0:8
+TimeWin = max(1,Snap*1000):(Snap+2)*1000;
+CARRIER(:,Snap+1) = mean( sourceFC.avg.pow(:,TimeWin), 2 );
 end
 
 % atypical values are removed for better visualization
-IQ     = iqr(sourceFC.avg.pow(:));
-MinZ = quantile(sourceFC.avg.pow(:),0.25) - 1.5*IQ;
-MaxZ = quantile(sourceFC.avg.pow(:),0.75) + 1.5*IQ;
+IQ     = iqr(CARRIER(:));
+MinZ = quantile(CARRIER(:),0.25) - 1.5*IQ;
+MaxZ = quantile(CARRIER(:),0.75) + 1.5*IQ;
 
-MinPow = max( min(sourceFC.avg.pow(:)), MinZ );
-MaxPow = min( max(sourceFC.avg.pow(:)), MaxZ );
-
-
-
+MinPow = max( min(CARRIER(:)), MinZ );
+MaxPow = min( max(CARRIER(:)), MaxZ );
 
 cfg  = [];
 cfg.method       = 'surface';
 cfg.funparameter = 'pow';
 cfg.funcolorlim  = [MinPow MaxPow];
 
-
-%t = tiledlayout(6,4,'TileSpacing','Compact','Padding','Compact');
-%nexttile
-
-for Snap = 0:24
-TimeWin = max(1,Snap*1000):(Snap+3)*1000;
-picFC.avg.pow = mean( sourceFC.avg.pow(:,TimeWin), 2 );
-
-%figure()
+%for Snap = 0:8
+Snap = 0;
+picFC.avg.pow = CARRIER(:,Snap+1);
 ft_sourceplot( cfg, picFC );
 
-set(gcf, 'PaperUnits', 'inches');
-x_width=4/3;
-y_width=4/3;
-set(gcf, 'PaperPosition', [0 0 x_width y_width]); %
-saveas(gcf,['brn',num2str(CHOSEN_TRIAL,'%02d'),'_',...
-    num2str(Snap,'%02d'),'.png'])
-close all
-end
+% set(gcf, 'PaperUnits', 'inches');
+% x_width=2*4/3;
+% y_width=2*4/3;
+% set(gcf, 'PaperPosition', [0 0 x_width y_width]); %
+% saveas(gcf,['brn',num2str(CHOSEN_TRIAL,'%02d'),'_',...
+%     num2str(Snap,'%02d'),'.png'])
+% close all
+%end
+
+%% TEMPLATE MRI FOR VISUALIZATION
+load standard_mri
+
+picFC  = sourceFC;
+
+cfg =[];
+cfg.sourcemodel.pos    = sourceFC.pos;
+cfg.sourcemodel.inside = sourceFC.inside';
+sourcemodel = ft_prepare_sourcemodel(cfg);
+
+cfg = [];
+mri = ft_volumereslice(cfg, mri);
+
+cfg= [];
+
+[mri] = ft_volumenormalise(cfg, vol);
+
+
+
+
+%for Snap = 0:8
+Snap = 0;
+picFC.avg.pow = CARRIER(:,Snap+1);
+
+cfg            = [];
+cfg.downsample = 2;
+cfg.parameter  = 'pow';
+sourceMRI  = ft_sourceinterpolate(cfg, picFC , mri);
+
+cfg  = [];
+cfg.method        = 'ortho';
+cfg.funparameter  = 'pow';
+%cfg.maskparameter = 'pow';
+cfg.funcolorlim   = [MinPow MaxPow];
+
+ft_sourceplot( cfg, sourceMRI );
+
+%% ADDITIONAL PLOTS
+%
+figure()
+ft_plot_headshape(sourcespace, 'unit', 'cm','facealpha', 0.9)
+ft_plot_vol(vol, 'unit', 'cm','facealpha', 0.1, 'edgecolor','r')
+ft_plot_sens(elec, 'unit', 'cm', 'label','label', 'orientation',true,...
+    'elecsize',7 )
+box on
+ft_plot_axes([], 'unit', 'cm');
+figure()
+ft_plot_headshape(sourcespace, 'unit', 'cm')
