@@ -5,9 +5,9 @@
 %% PARAMETER
 %
 % units here are mm, as in the plot
-xx =  34;
-yy = -24;
-zz =  12;
+xx =  35;
+yy = -31;
+zz =  51;
 
 %% IDENTIFICATION OF THE POINT
 %
@@ -27,4 +27,4 @@ plot( sourceFC.time, sourceFC.avg.pow(idx,:) )
 title(['Activity history at [',num2str([xx yy zz]),']'])
 xlabel('Time (s)')
 ylabel('Activity ("unit")')
-xlim([0 1])
+%xlim([0 1])
