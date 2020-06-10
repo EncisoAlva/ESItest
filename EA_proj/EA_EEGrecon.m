@@ -41,7 +41,6 @@ poststim = 60+50;
 %% 1. DATA LOAD
 %
 % DEPRECATED: old templates
-load sourcespace_template;
 load vol_template;
 load elec_template;
 load leadfield_template;

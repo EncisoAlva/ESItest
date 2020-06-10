@@ -7,7 +7,7 @@
 %% CHANGELOG
 % 2020-06-08
 %    Added to EA proj.
-%    Fused generate_vol_script.
+%    Fused generate_vol_script, align_electrodes_manually_script.
 
 %% CONFIG OUTSIDE MATLAB
 % external function 'dipoli' only runs on linux with admin permissions; to
@@ -17,6 +17,12 @@
 %   3. run: chmod +x dipoli.glnx86
 %
 % http://www.fieldtriptoolbox.org/faq/where_can_i_find_the_dipoli_command-line_executable/
+
+% Generate brain-skull-scalp geometry (vol) and forward model (leadfield)
+% for source reconstruction. Template MRI is considered.
+%
+% http://www.fieldtriptoolbox.org/tutorial/headmodel_eeg
+% 
 
 %% WORKING DIR
 %
@@ -76,23 +82,48 @@ save vol vol;
 
 %% VISUAL INSPECTION
 %
-figure;
+figure()
 ft_plot_mesh(vol.bnd(1),'facecolor','none'); %scalp
 view(0,0); % lateral
 
-figure;
+figure()
 ft_plot_mesh(vol.bnd(2),'facecolor','none'); %skull
 view(0,0); % lateral
 
-figure;
+figure()
 ft_plot_mesh(vol.bnd(3),'facecolor','none'); %brain
 view(0,0); % lateral
 
 % combined view
-figure;
-ft_plot_mesh(vol.bnd(1), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3, 'edgecolor', [1 1 1], 'edgealpha', 0.05);
+figure()
+ft_plot_mesh(vol.bnd(1), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
+    'edgecolor', [1 1 1], 'edgealpha', 0.05);
 hold on;
 ft_plot_mesh(vol.bnd(2),'edgecolor','none','facealpha',0.4);
 hold on;
 ft_plot_mesh(vol.bnd(3),'edgecolor','none','facecolor',[0.4 0.6 0.4]);
 view(0,0); % lateral
+
+%% ELECTRODE POSITION
+%
+% read coordinates of electrodes
+% elec = ft_read_sens('standard_1020.elc')
+elec = read_elecrodes_position('easycap-M1_hxi64_haley.txt');
+
+% visual inspection                     
+figure()
+% head surface (scalp)
+ft_plot_mesh(vol.bnd(1), 'edgecolor','none','facealpha',0.8,...
+    'facecolor',[0.6 0.6 0.8]); 
+hold on;
+% electrodes
+ft_plot_sens(elec,'label','label');    
+view([0 90]);
+
+% interactive alignment
+cfg           = [];
+cfg.method    = 'interactive';
+cfg.elec      = elec;
+cfg.headshape = vol.bnd(1);
+elec_aligned_new  = ft_electroderealign(cfg);
+save elec_aligned_new elec_aligned_new;
