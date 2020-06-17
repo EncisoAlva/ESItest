@@ -149,37 +149,39 @@ cfg.elec      = elec;
 cfg.headshape = vol.bnd(1);
 elec_aligned_new  = ft_electroderealign(cfg);
 
+% verification of coordinates
+cfg.grad      = elec_aligned_new;
+elec_aligned_new  = ft_electroderealign(cfg);
+
 save elec_aligned_new elec_aligned_new;
+
+% visual inspection, again
+if false
+figure()
+% head surface (scalp)
+ft_plot_mesh(vol.bnd(1), 'edgecolor','none','facealpha',0.8,...
+    'facecolor',[0.6 0.6 0.8]); 
+hold on;
+% electrodes
+ft_plot_sens(elec_aligned_new,'label','label');    
+view([0 90]);
+end
 
 %% FORWARD MODEL, AKA LEADFIELD
 %
-% locations of sources: a regular grid
-cfg = [];
-cfg.resolution  = 6;
-cfg.tight       = 'yes';
-cfg.inwardshift = 0.0;
-cfg.headmodel   = vol;
-cfg.tight       = 'yes';
-source_grid = ft_prepare_sourcemodel(cfg);
-
-save source_grid source_grid
-
-% visual inspection
-if false
-figure()
-scatter3(source_grid.pos(source_grid.inside,1),...
-    source_grid.pos(source_grid.inside,2),...
-    source_grid.pos(source_grid.inside,3))
-end
 
 % forward model per se
 cfg = [];
-cfg.elec     = elec_aligned_new;      % sensor positions as electrodes
-%cfg.grad     = elec_aligned_new;      % sensor positions as gradiometers
-cfg.channel  = {'all'};               % the used channels
-cfg.grid.pos = source_grid.pos;       % source points
-cfg.grid.inside = source_grid.inside; % source points
-cfg.vol      = vol;                   % volume conduction model
+%cfg.elec        = elec_aligned_new;   % sensor positions as electrodes
+cfg.grad        = elec_aligned_new;   % sensor positions as gradiometers
+cfg.channel     = {'all'};            % the used channels
+% cfg.grid.pos    = source_grid.pos;    % source points
+% cfg.grid.inside = source_grid.inside; % source points
+cfg.headmodel   = vol;                % volume conduction model
+cfg.resolution  = 6;
+cfg.unit        = 'mm';
+cfg.normalize = 'yes';
+
 leadfield = ft_prepare_leadfield(cfg);
 
 save leadfield leadfield;

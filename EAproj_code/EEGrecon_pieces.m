@@ -42,7 +42,6 @@ poststim = 6;
 %% 1. DATA LOAD
 %
 % templates given by HX
-load sourcespace_template;
 load vol_template;
 load elec_template;
 load leadfield_template;

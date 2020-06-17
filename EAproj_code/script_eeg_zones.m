@@ -93,15 +93,16 @@ tlckFC  = ft_timelockanalysis( cfg,dataFC_LP );
 %% INVERSE SOLUTION
 %
 cfg = [];
-cfg.method  = 'mne';
-cfg.channel = {'all'};
-cfg.grad    = elec_aligned_new;
-cfg.grid    = leadfield;
-cfg.vol     = vol;
+cfg.method      = 'mne';
+cfg.channel     = {'all'};
+cfg.elec        = elec_aligned_new;
+cfg.sourcemodel = leadfield;
+cfg.headmodel   = vol;
 cfg.mne.prewhiten      = 'yes';
-cfg.mne.lambda         = 3;
+cfg.mne.lambda         = 0; %3;
 cfg.mne.scalesourcecov = 'yes';
-cfg.keepleadfield      = 'yes';
+% cfg.keepleadfield      = 'yes';
+
 
 sourceFC  = ft_sourceanalysis(cfg, tlckFC);
 
@@ -153,8 +154,8 @@ cfg.funcolorlim  = [MinPow MaxPow];
 
 %% TEMPLATE MRI FOR VISUALIZATION
 %
-% visual inspection of mri
-ft_sourceplot([],mri_resliced)
+% % visual inspection of mri
+% ft_sourceplot([],mri_resliced)
 
 % backup var
 picFC  = sourceFC;
@@ -182,7 +183,7 @@ ft_sourceplot( cfg, sourceMRI );
 if false
 figure()
 %ft_plot_headshape(sourcespace, 'unit', 'cm','facealpha', 0.9)
-ft_plot_vol(vol, 'unit', 'cm','facealpha', 0.1, 'edgecolor','r')
+ft_plot_vol(vol,'facealpha', 0.1, 'edgecolor','r')
 ft_plot_sens(elec_aligned_new, 'unit', 'mm', 'label','label',...
     'orientation',true, 'elecsize',7 )
 box on
