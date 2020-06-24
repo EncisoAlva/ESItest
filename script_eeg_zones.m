@@ -15,36 +15,44 @@
 
 %% DIRECTORY STRUCTURE
 %  MATLAB-Drive
-%  |> HXIproj_data/input/Peng
-%  |   | waterpain1.eeg
-%  |   | waterpain1.vhdr
-%  |   | waterpain1.vmrk
-%  |> fieldtrip-***version***
-%  |> ESItest
-%  |   |> EAproj_code
-%  |   |  | -- this file --
-%  |   |> EA_templates
-%  |   |  | elec_algned_new.mat
-%  |   |  | segmentedmri.mat
+%  |> fieldtrip-**version**
+%  |> ESIproj_data
+%  |  |> waterpain
+%  |  |  |  waterpain1.eeg
+%  |  |  |  waterpain1.vhdr
+%  |  |  |  waterpain1.vmrk
+%  |> ESIproj_code
+%  |  |  -- this file --
+%  |  |> legacy
+%  |  |  |  read_elecrodes_position.m
+%  |  |> EAtemplates
+%  |  |  |  elec_aligned_new.mat
+%  |  |  |  leadfield.mat
+%  |  |  |  mri_resliced.mat
+%  |  |  |  vol.mat
 
 %% WORKING DIR + PARAMETERS + INIT
 %
 % EEG data dir
-dataDIR   = '../../HXIproj_data/';
-inDIR     = [ dataDIR, 'input/Peng' ];
-filePATH  = [ inDIR, '/waterpain1.vhdr' ];
+dataDIR   = '../ESIproj_data/waterpain';
+filePATH  = [ dataDIR, '/waterpain1.vhdr' ];
 
-% anatomical data dir
-addpath([ '../EA_templates' ]);
+% precomputed anatomical data, see script_forward_model
+addpath([ './EAtemplates' ]);
 
-% brain atlas provided in FieldTrip
-addpath([ '../../FT_template/atlas/brainnetome' ])
+% code written by others before
+addpath([ './legacy' ])
 
 % FieldTrip dir + init
 FTversion = '20200227'; % update if fieldtrip is changed
-addpath([ '../../fieldtrip-',FTversion ])
+addpath([ '../fieldtrip-', FTversion ])
 ft_defaults    % initialization
 
+% brain atlas provided in FieldTrip
+addpath([ '../fieldtrip-', FTversion, '/template/atlas/brainnetome' ])
+
+%% PARAMETERS
+%
 % specific segments: [-prestim,poststim] with 0 at stimulus
 % unit is second
 prestim  = 4;
@@ -58,7 +66,7 @@ poststim = 6;
 load elec_aligned_new;
 load leadfield;
 load mri_resliced;
-load segmentedmri;
+%load segmentedmri;
 load vol;
 
 % waterpain data
@@ -93,7 +101,7 @@ end
 cfg = [];
 cfg.covariance = 'yes';
 cfg.channel    = {'all'};
-cfg.grad       = elec_aligned_new;
+cfg.elec       = elec_aligned_new;
 
 tlckFC  = ft_timelockanalysis( cfg,dataFC_LP );
 
@@ -191,6 +199,14 @@ cfg.maskparameter = 'pow';
 cfg.funcolorlim   = [MinPow MaxPow];
 ft_sourceplot( cfg, sourceMRI );
 
+cfg  = [];
+cfg.method        = 'slice';
+cfg.funparameter  = 'pow';
+cfg.maskparameter = 'pow';
+cfg.funcolorlim   = [MinPow MaxPow];
+cfg.title         = 'title';
+ft_sourceplot( cfg, sourceMRI );
+
 %      set(gcf, 'PaperUnits', 'inches');
 %      x_width = 2*4;
 %      y_width = 2*4;
@@ -215,21 +231,28 @@ end
 brainnetome = ft_read_atlas('BNA_MPM_thr25_1.25mm.nii');
 
 % alignment of atlas
-%ft_determine_coordsys(brainnetome, 'interactive', 'yes');
 brainnetome = ft_convert_coordsys(brainnetome,'ctf');
+
+picFC = ft_convert_coordsys(picFC,'ctf');
 
 % Regions of Interest (ROI) are selected
 cfg = [];
 cfg.atlas      = brainnetome;
 cfg.roi        = brainnetome.tissuelabel;  % here you can also specify a single label, i.e. single ROI
 %cfg.inputcoord = 'mni';
-mask           = ft_volumelookup(cfg, segmentedmri);
+mask           = ft_volumelookup(cfg, leadfield);
+
+
+
+
+
 
 cfg= [];
-cfg.atlas = brainnetome;
+cfg.atlas         = brainnetome;
 cfg.method        = 'ortho';
-cfg.funparameter  = 'pow';
-%cfg.maskparameter = 'pow';
-cfg.roi        = brainnetome.tissuelabel;
+%cfg.funparameter = 'brain';
+%cfg.funparameter  = 'pow';
+cfg.maskparameter = mask;
+%cfg.roi        = brainnetome.tissuelabel;
 cfg.funcolorlim   = [MinPow MaxPow];
-ft_sourceplot( cfg, segmentedmri );
+ft_sourceplot( cfg, sourceMRI );

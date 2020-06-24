@@ -29,7 +29,7 @@
 
 %% DIRECTORY STRUCTURE
 %  MATLAB-Drive
-%  |> fieldtrip-***version***
+%  |> fieldtrip-**version**
 %  |  |> template
 %  |> ESIproj_data
 %  |  |> waterpain
@@ -48,7 +48,7 @@
 innDIR = [ '../ESIproj_data/waterpain' ];
 outDIR = [ './EAtemplates' ];
 
-% legacy code
+% code written by others before
 addpath([ './legacy' ])
 
 % FieldTrip dir + init
