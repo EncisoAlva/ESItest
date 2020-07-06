@@ -48,12 +48,14 @@
 innDIR = [ '../ESIproj_data/waterpain' ];
 outDIR = [ './EAtemplates' ];
 
+addpath(innDIR)
+
 % code written by others before
 addpath([ './legacy' ])
 
 % FieldTrip dir + init
 FTver = '20200227'; % update if fieldtrip is changed
-addpath([ '../../fieldtrip-',FTver ])
+addpath([ '../fieldtrip-',FTver ])
 ft_defaults    % initialization
 
 %% MRI PROCESSING
@@ -74,20 +76,26 @@ if ~isfield(mri,'coordsys') || ~strcmpi(mri.coordsys, 'ctf')
     mri = ft_volumerealign(cfg, mri);
 end
 
-% reslicing
+% normalisation (registration to std mri) + reslicing
 cfg = [];
 cfg.resolution = 1;
 cfg.dim        = [256 256 256];
 mri_resliced = ft_volumereslice(cfg, mri);
+mri_resliced = ft_volumereslice(cfg, mri_resliced);
+
+[mri_normalised] = ft_volumenormalise([],mri_resliced);
+%[mri_normalised] = ft_volumenormalise([],mri_normalised);
+mri_normalised   = ft_convert_units(mri_normalised,'mm');
 
 % segmentation
 cfg = [];
 %cfg.output    = {'gray','white','csf','skull','scalp'};
 cfg.output    = {'brain','skull','scalp'};
-segmentedmri  = ft_volumesegment(cfg, mri_resliced);
+segmentedmri  = ft_volumesegment(cfg, mri_normalised);
 
 save segmentedmri segmentedmri;
-save mri_resliced mri_resliced;
+%save mri_resliced mri_resliced;
+save mri_normalised mri_normalised;
 
 %% FORWARD MODEL CONDUCTOR
 %
@@ -97,6 +105,19 @@ cfg.tissue      = {'brain','skull','scalp'};
 cfg.numvertices = [3000 2000 1000];
 bnd = ft_prepare_mesh(cfg,segmentedmri);
 
+if false
+% PATCH: template MRI is trimmed at bottom of skull, causing the 3-sphere
+% model to fail (spheres intersect)
+% remove when MRI is provided, avoid trimming
+a = bnd(2).pos(:,3)==min(bnd(2).pos(:,3));
+bnd(2).pos(a,3) = bnd(2).pos(a,3)-.5;
+
+a = bnd(3).pos(:,3)-min(bnd(3).pos(:,3))<2;
+bnd(3).pos(a,3) = bnd(3).pos(a,3)-.5;
+a = bnd(3).pos(:,3)-min(bnd(3).pos(:,3))<1;
+bnd(3).pos(a,3) = bnd(3).pos(a,3)-.5;
+end
+
 save bnd bnd;
 
 % BEM model, volume conduction model
@@ -104,30 +125,33 @@ cfg = [];
 cfg.method = 'dipoli';
 vol        = ft_prepare_headmodel(cfg, bnd);
 
+% verification of coordinates
+vol = ft_determine_coordsys(vol, 'interactive', 'yes');
+
 save vol vol;
 
 % visual inspection
 if false
 figure()
-ft_plot_mesh(vol.bnd(1),'facecolor','none'); %scalp
+ft_plot_mesh(bnd(1),'facecolor','none'); %brain
 view(0,0); % lateral
 
 figure()
-ft_plot_mesh(vol.bnd(2),'facecolor','none'); %skull
+ft_plot_mesh(bnd(2),'facecolor','none'); %skull
 view(0,0); % lateral
 
 figure()
-ft_plot_mesh(vol.bnd(3),'facecolor','none'); %brain
+ft_plot_mesh(bnd(3),'facecolor','none'); %scalp
 view(0,0); % lateral
 
 % combined view
 figure()
-ft_plot_mesh(vol.bnd(1), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
+ft_plot_mesh(bnd(1), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
     'edgecolor', [1 1 1], 'edgealpha', 0.05);
 hold on;
-ft_plot_mesh(vol.bnd(2),'edgecolor','none','facealpha',0.4);
+ft_plot_mesh(bnd(2),'edgecolor','none','facealpha',0.4);
 hold on;
-ft_plot_mesh(vol.bnd(3),'edgecolor','none','facecolor',[0.4 0.6 0.4]);
+ft_plot_mesh(bnd(3),'edgecolor','none','facecolor',[0.4 0.6 0.4]);
 view(0,0); % lateral
 end
 
@@ -157,8 +181,9 @@ cfg.headshape = vol.bnd(1);
 elec_aligned_new  = ft_electroderealign(cfg);
 
 % verification of coordinates
-cfg.grad      = elec_aligned_new;
+cfg.elec          = elec_aligned_new;
 elec_aligned_new  = ft_electroderealign(cfg);
+elec_aligned_new  = ft_determine_coordsys(elec_aligned_new, 'interactive', 'yes');
 
 save elec_aligned_new elec_aligned_new;
 
@@ -186,6 +211,9 @@ cfg.resolution  = 5;
 cfg.unit        = 'mm';
 
 leadfield = ft_prepare_leadfield(cfg);
+
+% verification of coordinates
+leadfield = ft_determine_coordsys(leadfield, 'interactive', 'yes');
 
 save leadfield leadfield;
 

@@ -28,7 +28,7 @@
 %  |  |> EAtemplates
 %  |  |  |  elec_aligned_new.mat
 %  |  |  |  leadfield.mat
-%  |  |  |  mri_resliced.mat
+%  |  |  |  mri_normalised.mat
 %  |  |  |  vol.mat
 
 %% WORKING DIR + PARAMETERS + INIT
@@ -65,7 +65,7 @@ poststim = 6;
 % precomputed anatomical data
 load elec_aligned_new;
 load leadfield;
-load mri_resliced;
+load mri_normalised;
 %load segmentedmri;
 load vol;
 
@@ -118,7 +118,6 @@ cfg.mne.prewhiten      = 'yes';
 cfg.mne.lambda         = LAMBDA; %3;
 %cfg.mne.scalesourcecov = 'yes'; % preferred if mixed channels
 % cfg.keepleadfield      = 'yes';
-
 
 sourceFC  = ft_sourceanalysis(cfg, tlckFC);
 
@@ -174,7 +173,7 @@ MaxPow = min( max(CARRIER(:)), MaxZ );
 %% TEMPLATE MRI FOR VISUALIZATION
 %
 % % visual inspection of mri
-% ft_sourceplot([],mri_resliced)
+% ft_sourceplot([],mri_normalised)
 
 % backup var
 picFC  = sourceFC;
@@ -189,9 +188,10 @@ picFC.avg.pow = sourceFC.avg.pow(:,5000);
 cfg            = [];
 cfg.downsample = 2;
 cfg.parameter  = 'pow';
-sourceMRI  = ft_sourceinterpolate(cfg, picFC , mri_resliced);
+sourceMRI  = ft_sourceinterpolate(cfg, picFC , mri_normalised);
 
 % plot within mri
+figure()
 cfg  = [];
 cfg.method        = 'ortho';
 cfg.funparameter  = 'pow';
@@ -199,6 +199,7 @@ cfg.maskparameter = 'pow';
 cfg.funcolorlim   = [MinPow MaxPow];
 ft_sourceplot( cfg, sourceMRI );
 
+figure()
 cfg  = [];
 cfg.method        = 'slice';
 cfg.funparameter  = 'pow';
@@ -229,18 +230,48 @@ end
 %
 % Brainnetome atlas is is recent (2016) and specific (123 subregions)
 brainnetome = ft_read_atlas('BNA_MPM_thr25_1.25mm.nii');
+brainnetome = ft_convert_coordsys(brainnetome,leadfield.coordsys);
 
-% alignment of atlas
-brainnetome = ft_convert_coordsys(brainnetome,'ctf');
-
-picFC = ft_convert_coordsys(picFC,'ctf');
 
 % Regions of Interest (ROI) are selected
 cfg = [];
 cfg.atlas      = brainnetome;
-cfg.roi        = brainnetome.tissuelabel;  % here you can also specify a single label, i.e. single ROI
-%cfg.inputcoord = 'mni';
+%cfg.roi        = brainnetome.tissuelabel;  % here you can also specify a single label, i.e. single ROI
+cfg.roi        = 'SFG, Right Superior Frontal Gyrus A8m, medial area 8';
 mask           = ft_volumelookup(cfg, leadfield);
+
+% visual inspection
+ft_plot_mesh(vol.bnd(3), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
+    'edgecolor', [1 1 1], 'edgealpha', 0.05);
+hold on;
+scatter3(leadfield.pos(leadfield.inside,1),leadfield.pos(leadfield.inside,2),leadfield.pos(leadfield.inside,3))
+
+scatter3(leadfield.pos(mask,1),leadfield.pos(mask,2),leadfield.pos(mask,3),'filled')
+
+%%
+% testing
+% cfg= [];
+% cfg.funparameter = 'brain';
+% cfg.location = 'center';
+% ft_sourceplot(cfg,mri_normalised)
+
+
+
+
+
+% Regions of Interest (ROI) are selected
+cfg = [];
+cfg.atlas      = brainnetome;
+%cfg.roi        = brainnetome.tissuelabel;  % here you can also specify a single label, i.e. single ROI
+cfg.roi        = 'SFG, Right Superior Frontal Gyrus A8m, medial area 8';
+%cfg.inputcoord = 'mni';
+mask           = ft_volumelookup(cfg, sourceMRI);
+
+
+cfg = [];
+cfg.funparameter=mask;
+ft_sourceplot(cfg,sourceMRI)
+
 
 
 
@@ -248,11 +279,11 @@ mask           = ft_volumelookup(cfg, leadfield);
 
 
 cfg= [];
-cfg.atlas         = brainnetome;
+%cfg.atlas         = brainnetome;
 cfg.method        = 'ortho';
 %cfg.funparameter = 'brain';
 %cfg.funparameter  = 'pow';
 cfg.maskparameter = mask;
 %cfg.roi        = brainnetome.tissuelabel;
-cfg.funcolorlim   = [MinPow MaxPow];
+%cfg.funcolorlim   = [MinPow MaxPow];
 ft_sourceplot( cfg, sourceMRI );
