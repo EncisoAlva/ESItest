@@ -61,7 +61,7 @@ addpath([ '../fieldtrip-', FTversion, '/template/atlas/brainnetome' ])
 prestim  = 4;
 poststim = 6;
 
-%LAMBDA = 3;
+LAMBDA = .0001;
 
 %% DATA LOAD + PRE-PROCESSING
 %
@@ -163,7 +163,7 @@ MaxPow = min( max(CARRIER(:)), MaxZ );
 %     snap = 0;
 %     picFC.avg.pow = CARRIER(:,snap+1);
 %     ft_sourceplot( cfg, picFC );
-    
+%     
 %     set(gcf, 'PaperUnits', 'inches');
 %     x_width = 2*4/3;
 %     y_width = 2*4/3;
@@ -172,6 +172,29 @@ MaxPow = min( max(CARRIER(:)), MaxZ );
 %         num2str(snap,'%02d'),'.png'])
 %     close all
 % end
+
+cfg1  = [];
+cfg1.method        = 'slice';
+cfg1.funparameter  = 'pow';
+cfg1.maskparameter = 'pow';
+cfg1.funcolorlim   = [MinPow MaxPow];
+
+cfg            = [];
+cfg.downsample = 2;
+cfg.parameter  = 'pow';
+
+for snap = 0:(n_windows-1)
+    picFC.avg.pow = CARRIER(:,snap+1);    
+    
+    sourceMRI  = ft_sourceinterpolate(cfg, picFC , mri_normalised);
+    cfg1.title = ['t = ',num2str(WINDOW_LEN*(snap+.5),'%1.3f'),' s'];
+    ft_sourceplot( cfg1, sourceMRI );
+    
+    set(gcf, 'PaperUnits', 'inches');
+    %set(gcf, 'PaperPosition', [0 0 x_width y_width]); %
+    saveas(gcf,['tr0l3_snap',num2str(snap,'%02d'),'.png'])
+    close all
+end
 
 %% TEMPLATE MRI FOR VISUALIZATION
 %

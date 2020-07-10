@@ -97,6 +97,7 @@ if false
 figure()
 ft_plot_mesh(vol.bnd(3), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
     'edgecolor', [1 1 1], 'edgealpha', 0.05);
+title('Dorsolateral prefrontal cortex')
 hold on;
 scatter3(leadfield.pos(DL_PF_C_msk,1),...
          leadfield.pos(DL_PF_C_msk,2),...
@@ -104,11 +105,13 @@ scatter3(leadfield.pos(DL_PF_C_msk,1),...
 figure()
 ft_plot_mesh(vol.bnd(3), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
     'edgecolor', [1 1 1], 'edgealpha', 0.05);
+title('Anterior cingulate cortex')
 hold on;
 scatter3(leadfield.pos(A_C_C_msk,1),...
          leadfield.pos(A_C_C_msk,2),...
          leadfield.pos(A_C_C_msk,3),'filled')
 figure()
+title('Insula')
 ft_plot_mesh(vol.bnd(3), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
     'edgecolor', [1 1 1], 'edgealpha', 0.05);
 hold on;
@@ -118,6 +121,7 @@ scatter3(leadfield.pos(I_msk,1),...
 figure()
 ft_plot_mesh(vol.bnd(3), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
     'edgecolor', [1 1 1], 'edgealpha', 0.05);
+title('Primary somatosensory cortex')
 hold on;
 scatter3(leadfield.pos(P_SS_C_msk,1),...
          leadfield.pos(P_SS_C_msk,2),...
@@ -125,6 +129,7 @@ scatter3(leadfield.pos(P_SS_C_msk,1),...
 figure()
 ft_plot_mesh(vol.bnd(3), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
     'edgecolor', [1 1 1], 'edgealpha', 0.05);
+title('Ventroposterior lateral nucleus of thalamus')
 hold on;
 scatter3(leadfield.pos(VPL_TH_msk,1),...
          leadfield.pos(VPL_TH_msk,2),...
@@ -132,6 +137,7 @@ scatter3(leadfield.pos(VPL_TH_msk,1),...
 figure()
 ft_plot_mesh(vol.bnd(3), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
     'edgecolor', [1 1 1], 'edgealpha', 0.05);
+title('Amygdala')
 hold on;
 scatter3(leadfield.pos(A_msk,1),...
          leadfield.pos(A_msk,2),...
@@ -176,13 +182,47 @@ A_dat       = sourceFC.avg.pow(A_msk,:);
 time = sourceFC.time;
 figure()
 plot(time,DL_PF_C_dat)
+title('Dorsolateral prefrontal cortex')
 figure()
 plot(time,A_C_C_dat)
+title('Anterior cingulate cortex')
 figure()
 plot(time,I_dat)
+title('Insula')
 figure()
 plot(time,P_SS_C_dat)
+title('Primary somatosensory cortex')
 figure()
 plot(time,VPL_TH_dat)
+title('Ventroposterior lateral nucleus of thalamus')
 figure()
 plot(time,A_dat)
+title('Amygdala')
+
+
+%%
+figure()
+plot(time,DL_PF_C_dat(1:5,:))
+title('Dorsolateral prefrontal cortex, first 5')
+
+
+points = leadfield.pos(DL_PF_C_msk,:);
+points = points(1:5,:);
+
+figure()
+ft_plot_mesh(vol.bnd(3), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
+    'edgecolor', [1 1 1], 'edgealpha', 0.05);
+title('Dorsolateral prefrontal cortex, first 5')
+hold on;
+scatter3(points(:,1),...
+         points(:,2),...
+         points(:,3),'filled')
+scatter3(points(3,1),...
+         points(3,2),...
+         points(3,3),'filled')
+     
+     
+     
+figure()
+plot(time,DL_PF_C_dat(3,:))
+title('Dorsolateral prefrontal cortex, first 1')
