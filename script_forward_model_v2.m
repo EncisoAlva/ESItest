@@ -1,0 +1,226 @@
+% Generate forward model (leadfield) given an MRI and electrode locations
+% with labels. Manual input is required to identify fiducials and align
+% electrodes with head.
+%
+% Anonimized MRI is considered, provided by C. Papadelis.
+%
+% Curated by EA for a project on EEG reconstruction. Based on code by HXI 
+% for a similar, previous project.
+%
+% For reference, check the following tutorials:
+% http://www.fieldtriptoolbox.org/tutorial/headmodel_eeg
+% http://www.fieldtriptoolbox.org/tutorial/sourcemodel/
+
+%% CHANGELOG
+% 2020-06-08
+%    Curated by EA for a project on EEG reconstruction. Based on code by
+%    HXI for a similar, previous project.
+% 2020-06-20
+%    Change on directory organization in order to better report and share
+%    with pairs.
+% 2020-08-03
+%    Previous script is slightly modified to different file formats.
+
+%% CONFIG OUTSIDE MATLAB
+% external function 'dipoli' only runs on linux with admin permissions; to
+% grant such permissions do the following:
+%   1. locate  ../fieldtrip-'version'/external/dipoli' ] )
+%   2. open directory in a terminal
+%   3. run: chmod +x dipoli.glnx86
+%
+% http://www.fieldtriptoolbox.org/faq/where_can_i_find_the_dipoli_command-line_executable/
+
+%% DIRECTORY STRUCTURE
+%  MATLAB-Drive
+%  |> fieldtrip-**version**
+%  |  |> template
+%  |> ESIproj_data (DEPRECATED)
+%  |  |> waterpain
+%  |  |  |  easycap-M1_hxi64_haley.txt
+%  |  |  |  standard_mri.mat
+%  |> Christos_Data
+%  |  |> MEG+EEG_Data
+%  |  |> MRI
+%  |> ESIproj_code
+%  |  |  -- this file --
+%  |  |> legacy
+%  |  |  |  read_elecrodes_position.m
+%  |  |> EAtemplates
+%  |  |  | -- results --
+
+%% WORKING DIR
+%
+% input/outup dir
+%addpath( '../Christos_Data/MEG+EEG_Data' );
+mriDIR = '../Christos_Data/MRI/BCH001';
+outDIR = [ './EAtemplates_v2' ];
+
+% code written by others before
+addpath([ './legacy' ])
+
+% FieldTrip dir + init
+FTver = '20200227'; % update if fieldtrip is changed
+addpath([ '../fieldtrip-',FTver ])
+ft_defaults    % initialization
+
+%% MRI PROCESSING
+%
+% read MRI
+mriFILE = [ mriDIR, ...
+    '/0001-1.3.12.2.1107.5.2.32.35235.30000009112921055306200008706.dcm' ];
+[mri] = ft_read_mri( mriFILE, 'dataformat', 'dicom' );
+
+% realign to CTF: manually select nasion (N) and left/righ auricular point 
+% (LPA/RPA)
+% follow instructions on terminal
+if ~isfield(mri,'coordsys') || ~strcmpi(mri.coordsys, 'ctf')
+    % manually get the correct orientation
+    mri = ft_determine_coordsys(mri, 'interactive', 'yes');
+    
+    % manually identify fiducials
+    cfg = [];
+    cfg.method = 'interactive';
+    mri = ft_volumerealign(cfg, mri);
+end
+
+% normalisation (registration to std mri) + reslicing
+cfg = [];
+cfg.resolution = 1;
+cfg.dim        = [256 256 256];
+mri_resliced = ft_volumereslice(cfg, mri);
+mri_resliced = ft_volumereslice(cfg, mri_resliced);
+
+[mri_normalised] = ft_volumenormalise([],mri_resliced);
+%[mri_normalised] = ft_volumenormalise([],mri_normalised);
+mri_normalised   = ft_convert_units(mri_normalised,'mm');
+
+% segmentation
+cfg = [];
+%cfg.output    = {'gray','white','csf','skull','scalp'};
+cfg.output    = {'brain','skull','scalp'};
+segmentedmri  = ft_volumesegment(cfg, mri_normalised);
+
+save segmentedmri segmentedmri;
+%save mri_resliced mri_resliced;
+save mri_normalised mri_normalised;
+
+%% FORWARD MODEL CONDUCTOR
+%
+% surfaces are created at the boarders of the different tissue-types
+cfg = [];
+cfg.tissue      = {'brain','skull','scalp'};
+cfg.numvertices = [3000 2000 1000];
+bnd = ft_prepare_mesh(cfg,segmentedmri);
+
+if false
+% PATCH: template MRI is trimmed at bottom of skull, causing the 3-sphere
+% model to fail (spheres intersect)
+% remove when MRI is provided, avoid trimming
+a = bnd(2).pos(:,3)==min(bnd(2).pos(:,3));
+bnd(2).pos(a,3) = bnd(2).pos(a,3)-.5;
+
+a = bnd(3).pos(:,3)-min(bnd(3).pos(:,3))<2;
+bnd(3).pos(a,3) = bnd(3).pos(a,3)-.5;
+a = bnd(3).pos(:,3)-min(bnd(3).pos(:,3))<1;
+bnd(3).pos(a,3) = bnd(3).pos(a,3)-.5;
+end
+
+save bnd bnd;
+
+% BEM model, volume conduction model
+cfg = [];
+cfg.method = 'dipoli';
+vol        = ft_prepare_headmodel(cfg, bnd);
+
+% verification of coordinates
+vol = ft_determine_coordsys(vol, 'interactive', 'yes');
+
+save vol vol;
+
+% visual inspection
+if false
+figure()
+ft_plot_mesh(bnd(1),'facecolor','none'); %brain
+view(0,0); % lateral
+
+figure()
+ft_plot_mesh(bnd(2),'facecolor','none'); %skull
+view(0,0); % lateral
+
+figure()
+ft_plot_mesh(bnd(3),'facecolor','none'); %scalp
+view(0,0); % lateral
+
+% combined view
+figure()
+ft_plot_mesh(bnd(1), 'facecolor',[0.2 0.2 0.2], 'facealpha', 0.3,...
+    'edgecolor', [1 1 1], 'edgealpha', 0.05);
+hold on;
+ft_plot_mesh(bnd(2),'edgecolor','none','facealpha',0.4);
+hold on;
+ft_plot_mesh(bnd(3),'edgecolor','none','facecolor',[0.4 0.6 0.4]);
+view(0,0); % lateral
+end
+
+%% ELECTRODE POSITION
+%
+% read coordinates of electrodes
+% elec = ft_read_sens('standard_1020.elc')
+elec = read_elecrodes_position('easycap-M1_hxi64_haley.txt');
+
+% visual inspection
+if false
+figure()
+% head surface (scalp)
+ft_plot_mesh(vol.bnd(1), 'edgecolor','none','facealpha',0.8,...
+    'facecolor',[0.6 0.6 0.8]); 
+hold on;
+% electrodes
+ft_plot_sens(elec,'label','label');    
+view([0 90]);
+end
+
+% interactive alignment
+cfg           = [];
+cfg.method    = 'interactive';
+cfg.elec      = elec;
+cfg.headshape = vol.bnd(1);
+elec_aligned_new  = ft_electroderealign(cfg);
+
+% verification of coordinates
+cfg.elec          = elec_aligned_new;
+elec_aligned_new  = ft_electroderealign(cfg);
+elec_aligned_new  = ft_determine_coordsys(elec_aligned_new, 'interactive', 'yes');
+
+save elec_aligned_new elec_aligned_new;
+
+% visual inspection, again
+if false
+figure()
+% head surface (scalp)
+ft_plot_mesh(vol.bnd(1), 'edgecolor','none','facealpha',0.8,...
+    'facecolor',[0.6 0.6 0.8]); 
+hold on;
+% electrodes
+ft_plot_sens(elec_aligned_new,'label','label');    
+view([0 90]);
+end
+
+%% FORWARD MODEL, AKA LEADFIELD
+%
+% forward model per se
+cfg = [];
+cfg.elec        = elec_aligned_new;   % sensor positions as electrodes
+%cfg.grad        = elec_aligned_new;   % sensor positions as gradiometers
+cfg.channel     = {'all'};            % the used channels
+cfg.headmodel   = vol;                % volume conduction model
+cfg.resolution  = 5;
+cfg.unit        = 'mm';
+
+leadfield = ft_prepare_leadfield(cfg);
+
+% verification of coordinates
+leadfield = ft_determine_coordsys(leadfield, 'interactive', 'yes');
+
+save leadfield leadfield;
+
